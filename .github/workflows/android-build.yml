@@ -35,39 +35,52 @@ jobs:
           sdkmanager "platforms;android-35"
           sdkmanager "build-tools;35.0.0"
 
+      - name: Extract Lumora project
+        shell: bash
+        run: |
+          echo "Extracting Lumora project..."
+
+          mkdir -p lumora-source
+
+          unzip -o Lumora_Auto_Enhancer_CoGo_V0.1.zip -d lumora-source
+
+          echo "Extracted files:"
+          find lumora-source -maxdepth 4 -type f | sort
+
       - name: Find Gradle project
         shell: bash
         run: |
           echo "Searching for Gradle project..."
 
-          SETTINGS_FILE=$(find . -name "settings.gradle.kts" -type f -not -path "*/.gradle/*" | head -n 1)
+          SETTINGS_FILE=$(find lumora-source \
+            -name "settings.gradle.kts" \
+            -type f \
+            -not -path "*/.gradle/*" | head -n 1)
 
           if [ -z "$SETTINGS_FILE" ]; then
-            SETTINGS_FILE=$(find . -name "settings.gradle" -type f -not -path "*/.gradle/*" | head -n 1)
+            SETTINGS_FILE=$(find lumora-source \
+              -name "settings.gradle" \
+              -type f \
+              -not -path "*/.gradle/*" | head -n 1)
           fi
 
           if [ -z "$SETTINGS_FILE" ]; then
-            echo "ERROR: settings.gradle or settings.gradle.kts was not found."
-            echo "Repository structure:"
-            find . -maxdepth 4 -type f | sort
+            echo "ERROR: Gradle settings file was not found."
             exit 1
           fi
 
           PROJECT_DIR=$(dirname "$SETTINGS_FILE")
 
-          echo "Gradle settings found at:"
-          echo "$SETTINGS_FILE"
-
-          echo "Gradle project directory:"
+          echo "Gradle project found:"
           echo "$PROJECT_DIR"
 
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
       - name: Show project files
         run: |
-          echo "Building from: $PROJECT_DIR"
+          echo "Project directory: $PROJECT_DIR"
           echo "Project files:"
-          find "$PROJECT_DIR" -maxdepth 2 -type f | sort
+          find "$PROJECT_DIR" -maxdepth 3 -type f | sort
 
       - name: Build APK
         shell: bash
@@ -79,11 +92,14 @@ jobs:
         shell: bash
         run: |
           echo "Searching for APK..."
-          find . -path "*/build/outputs/apk/debug/*.apk" -type f -print
+          find "$PROJECT_DIR" \
+            -path "*/build/outputs/apk/debug/*.apk" \
+            -type f \
+            -print
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: Lumora-Auto-Enhancer-APK
-          path: "**/build/outputs/apk/debug/*.apk"
+          path: "lumora-source/**/build/outputs/apk/debug/*.apk"
           if-no-files-found: error
